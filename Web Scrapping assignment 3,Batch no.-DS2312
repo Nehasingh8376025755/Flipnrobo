@@ -1,0 +1,451 @@
+from __future__ import annotations
+
+from typing import Any import requests
+from bs4 import BeautifulSoup
+
+def search_amazon_product(product_name, num_pages=1):
+    for page in range(1, num_pages+1):
+        url = f"https://www.amazon.in/s?k={product_name}&page={page}"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"}
+        try:
+            response = requests.get(url, headers=headers)
+
+            if response.status_code == 200:
+                soup = BeautifulSoup(response.content, 'html.parser')
+                products = soup.find_all('div', {'data-component-type': 's-search-result'})
+
+                for product in products:
+                    product_name = product.find('span', {'class': 'a-size-medium'}).text.strip()
+                    product_price_tag = product.find('span', {'class': 'a-price-whole'})
+                    product_price = "Price not available"
+                    if product_price_tag:
+                        product_price = product_price_tag.text.strip()
+                    print(f"Product: {product_name}, Price: ₹{product_price}")
+            else:
+                print(f"Failed to fetch data from Amazon for page {page}.")
+        except Exception as e:
+            print(f"An error occurred: {str(e)}")
+
+if _name_ == "_main_":
+    search_query = input("Enter the product you want to search for on Amazon: ")
+    num_pages = int(input("Enter the number of pages to search (default is 1): ") or 1)
+    search_amazon_product(search_query, num_pages)
+    
+    
+    
+    2
+
+    import requests
+from bs4 import BeautifulSoup
+import pandas as pd
+
+
+def scrape_product_details(product_name, num_pages=3):
+    data = []
+    for page in range(1, num_pages + 1):
+        url = f"https://www.amazon.in/s?k={product_name}&page={page}"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"}
+        try:
+            response = requests.get(url, headers=headers)
+
+            if response.status_code == 200:
+                soup = BeautifulSoup(response.content, 'html.parser')
+                products = soup.find_all('div', {'data-component-type': 's-search-result'})
+
+                for product in products:
+                    product_details = {
+                        "Brand Name": "-",
+                        "Name of the Product": "-",
+                        "Price": "-",
+                        "Return/Exchange": "-",
+                        "Expected Delivery": "-",
+                        "Availability": "-",
+                        "Product URL": "-"
+                    }
+
+                    brand_tag = product.find('span', {'class': 'a-size-base-plus'})
+                    if brand_tag:
+                        product_details["Brand Name"] = brand_tag.text.strip()
+
+                    name_tag = product.find('span', {'class': 'a-size-medium'})
+                    if name_tag:
+                        product_details["Name of the Product"] = name_tag.text.strip()
+
+                    price_tag = product.find('span', {'class': 'a-price-whole'})
+                    if price_tag:
+                        product_details["Price"] = price_tag.text.strip()
+
+                    return_tag = product.find('div', {'class': 'a-row a-size-small'})
+                    if return_tag:
+                        product_details["Return/Exchange"] = return_tag.text.strip()
+
+                    delivery_tag = product.find('span', {'class': 'a-text-bold'})
+                    if delivery_tag:
+                        product_details["Expected Delivery"] = delivery_tag.text.strip()
+
+                    availability_tag = product.find('span', {'class': 'a-size-base'})
+                    if availability_tag:
+                        product_details["Availability"] = availability_tag.text.strip()
+
+                    product_url_tag = product.find('a', {'class': 'a-link-normal'})
+                    if product_url_tag:
+                        product_details["Product URL"] = "https://www.amazon.in" + product_url_tag['href']
+
+                    data.append(product_details)
+            else:
+                print(f"Failed to fetch data from Amazon for page {page}.")
+        except Exception as e:
+            print(f"An error occurred: {str(e)}")
+
+    df = pd.DataFrame(data)
+    df.to_csv("amazon_products.csv", index=False)
+    print("Data saved successfully to amazon_products.csv")
+
+
+if _name_ == "_main_":
+    search_query = input("Enter the product you want to search for on Amazon: ")
+    scrape_product_details(search_query)
+
+
+Ans 3
+
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+import time
+import os
+import requests
+from tqdm import tqdm
+
+def scrape_images(keyword, num_images=10):
+    # Launch the Chrome browser
+    driver = webdriver.Chrome(executable_path="path_to_chromedriver.exe")
+
+    try:
+        # Navigate to Google Images
+        driver.get("https://www.google.com/imghp?hl=en")
+
+        # Find the search bar and input the keyword
+        search_bar = driver.find_element_by_xpath("//input[@title='Search']")
+        search_bar.send_keys(keyword)
+
+        # Press Enter to perform the search
+        search_bar.send_keys(Keys.RETURN)
+
+        # Scroll to load more images
+        last_height = driver.execute_script("return document.body.scrollHeight")
+        while len(driver.find_elements_by_css_selector("img")) < num_images:
+            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+            time.sleep(2)
+            new_height = driver.execute_script("return document.body.scrollHeight")
+            if new_height == last_height:
+                break
+            last_height = new_height
+
+        # Find all the image elements
+        images = driver.find_elements_by_css_selector("img")
+
+        # Create a directory to save images
+        os.makedirs(keyword, exist_ok=True)
+
+        # Download and save the images
+        for i, image in enumerate(tqdm(images[:num_images], desc=f"Scraping images for {keyword}")):
+            image_url = image.get_attribute("src")
+            if image_url:
+                try:
+                    image_data = requests.get(image_url).content
+                    with open(os.path.join(keyword, f"{keyword}_{i+1}.jpg"), "wb") as f:
+                        f.write(image_data)
+                except Exception as e:
+                    print(f"Error saving image {i+1}: {str(e)}")
+    except Exception as e:
+        print(f"An error occurred: {str(e)}")
+    finally:
+        # Close the browser
+        driver.quit()
+        if _name_ == "_main_":
+            keywords = ['fruits', 'cars', 'Machine Learning', 'Guitar', 'Cakes']
+            for keyword in keywords:
+                scrape_images(keyword, num_images=10)
+
+        ans 4
+        import requests
+        from bs4 import BeautifulSoup
+        import pandas as pd
+
+        def scrape_flipkart_smartphones(smartphone_name):
+            url = f"https://www.flipkart.com/search?q={smartphone_name}&otracker=search&otracker1=search&marketplace=FLIPKART&as-show=on&as=off"
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"}
+            response = requests.get(url, headers=headers)
+
+            if response.status_code == 200:
+                soup = BeautifulSoup(response.content, 'html.parser')
+                products = soup.find_all('div', {'class': '_1AtVbE'})
+
+                data = []
+                for product in products:
+                    details = {
+                        "Brand Name": "-",
+                        "Smartphone Name": "-",
+                        "Colour": "-",
+                        "RAM": "-",
+                        "Storage (ROM)": "-",
+                        "Primary Camera": "-",
+                        "Secondary Camera": "-",
+                        "Display Size": "-",
+                        "Battery Capacity": "-",
+                        "Price": "-",
+                        "Product URL": "-"
+                    }
+
+                    brand_tag = product.find('div', {'class': '_4rR01T'})
+                    if brand_tag:
+                        details["Brand Name"] = brand_tag.text.strip().split()[0]
+
+                    name_tag = product.find('a', {'class': 'IRpwTa'})
+                    if name_tag:
+                        details["Smartphone Name"] = name_tag.text.strip()
+
+                    colour_tag = product.find('a', {'class': '_2rpwqI'})
+                    if colour_tag:
+                        details["Colour"] = colour_tag.text.strip()
+
+                    specs_dict = {}
+                    specs_list = product.find_all('li', {'class': 'rgWa7D'})
+                    for spec in specs_list:
+                        spec_text = spec.text.strip()
+                        key_value = spec_text.split(':')
+                        if len(key_value) == 2:
+                            specs_dict[key_value[0]] = key_value[1]
+
+                    details["RAM"] = specs_dict.get("RAM", "-")
+                    details["Storage (ROM)"] = specs_dict.get("ROM", "-")
+                    details["Primary Camera"] = specs_dict.get("Primary Camera", "-")
+                    details["Secondary Camera"] = specs_dict.get("Secondary Camera", "-")
+                    details["Display Size"] = specs_dict.get("Display Size", "-")
+                    details["Battery Capacity"] = specs_dict.get("Battery Capacity", "-")
+
+                    price_tag = product.find('div', {'class': '_30jeq3 _1_WHN1'})
+                    if price_tag:
+                        details["Price"] = price_tag.text.strip().replace('₹', '')
+
+                    product_url = product.find('a', {'class': '_1fQZEK'})
+                    if product_url:
+                        details["Product URL"] = "https://www.flipkart.com" + product_url['href']
+
+                    data.append(details)
+
+                df = pd.DataFrame(data)
+                df.to_csv("flipkart_smartphones.csv", index=False)
+                print("Data saved successfully to flipkart_smartphones.csv")
+            else:
+                print("Failed to fetch data from Flipkart.")
+
+        if _name_ == "_main_":
+            smartphone_name = input("Enter the smartphone you want to search for on Flipkart: ")
+            scrape_flipkart_smartphones(smartphone_name)
+            
+            Ans 5
+            import requests
+            from bs4 import BeautifulSoup
+
+            def get_geospatial_coordinates(city_name):
+                # Replace spaces in city name with '+' for the URL
+                city_name_url = city_name.replace(" ", "+")
+
+                # Google Maps URL for searching a location
+                url = f"https://www.google.com/maps/search/{city_name_url}"
+
+                try:
+                    # Send a GET request to the Google Maps URL
+                    response = requests.get(url)
+                    if response.status_code == 200:
+                        # Parse the HTML content
+                        soup = BeautifulSoup(response.content, 'html.parser')
+
+                        # Find the meta tags containing the latitude and longitude
+                        meta_tags = soup.find_all("meta", itemprop="latitude") + soup.find_all("meta",
+                                                                                               itemprop="longitude")
+
+                        # Extract latitude and longitude values
+                        latitude = meta_tags[0]["content"]
+                        longitude = meta_tags[1]["content"]
+
+                        print(f"Geospatial coordinates of {city_name}: Latitude={latitude}, Longitude={longitude}")
+                    else:
+                        print(f"Failed to fetch data from Google Maps for {city_name}.")
+                except Exception as e:
+                    print(f"An error occurred: {str(e)}")
+
+            if _name_ == "_main_":
+                city_name = input("Enter the name of the city: ")
+                get_geospatial_coordinates(city_name)
+
+Ans 6
+
+import requests
+from bs4 import BeautifulSoup
+
+
+def scrape_gaming_laptops():
+    url = "https://www.digit.in/top-products/best-gaming-laptops-40.html"
+    response = requests.get(url)
+
+    if response.status_code == 200:
+        soup = BeautifulSoup(response.text, "html.parser")
+        laptops = soup.find_all("div", class_="TopNumbeHeading sticky-footer")
+
+        for laptop in laptops:
+            name = laptop.find("h3").text.strip()
+            specs = laptop.find("div", class_="TopNumbeHeading sticky-footer").text.strip()
+            price = laptop.find("div", class_="smprice").text.strip()
+
+            print(f"Name: {name}")
+            print(f"Specifications: {specs}")
+            print(f"Price: {price}")
+            print("=" * 50)
+    else:
+        print("Failed to retrieve page.")
+
+
+scrape_gaming_laptops()
+
+
+Ans 7
+
+import requests
+from bs4 import BeautifulSoup
+
+def scrape_billionaires():
+    url = "https://www.forbes.com/billionaires/"
+    response = requests.get(url)
+
+    if response.status_code == 200:
+        soup = BeautifulSoup(response.text, "html.parser")
+        billionaires = soup.find_all("div", class_="person")
+
+        for billionaire in billionaires:
+            rank = billionaire.find("div", class_="rank").text.strip()
+            name = billionaire.find("div", class_="personName").text.strip()
+            net_worth = billionaire.find("div", class_="netWorth").text.strip()
+            age = billionaire.find("div", class_="age").text.strip()
+            citizenship = billionaire.find("div", class_="countryOfCitizenship").text.strip()
+            source = billionaire.find("div", class_="source-column").text.strip()
+            industry = billionaire.find("div", class_="category").text.strip()
+            country = billionaire.find("div", class_="countryOfCitizenship").find("div", class_="country").text.strip()
+            img_url = billionaire.find("div", class_="image").img["src"]
+
+            print("Rank:", rank)
+            print("Name:", name)
+            print("Net worth:", net_worth)
+            print("Age:", age)
+            print("Citizenship:", citizenship)
+            print("Source:", source)
+            print("Industry:", industry)
+            print("Country:", country)
+            print("Image URL:", img_url)
+            print("="*50)
+    else:
+        print("Failed to retrieve page.")
+
+scrape_billionaires()
+
+Ans 8
+
+from googleapiclient.discovery import build
+from datetime import datetime
+
+# Enter your API key here
+api_key = 'YOUR_API_KEY'
+
+# Enter the video ID of the YouTube video from which you want to extract comments
+video_id = 'YOUR_VIDEO_ID'
+
+# Number of comments to extract
+num_comments_to_extract = 500
+
+def extract_comments(api_key, video_id, num_comments_to_extract):
+    youtube = build('youtube', 'v3', developerKey=api_key)
+
+    # Call the API to get the video's comments
+    response = youtube.commentThreads().list(
+        part='snippet',
+        videoId=video_id,
+        maxResults=num_comments_to_extract
+    ).execute()
+
+    comments = []
+    for item in response['items']:
+        comment = item['snippet']['topLevelComment']['snippet']['textDisplay']
+        like_count = item['snippet']['topLevelComment']['snippet']['likeCount']
+        published_at = item['snippet']['topLevelComment']['snippet']['publishedAt']
+        published_at = datetime.strptime(published_at, "%Y-%m-%dT%H:%M:%SZ")
+        comments.append((comment, like_count, published_at))
+
+    return comments
+
+# Extract comments
+extracted_comments = extract_comments(api_key, video_id, num_comments_to_extract)
+
+# Print the extracted comments, upvotes, and time
+for idx, (comment, like_count, published_at) in enumerate(extracted_comments, start=1):
+    print(f"Comment {idx}:")
+    print(f"Comment: {comment}")
+    print(f"Upvotes: {like_count}")
+    print(f"Time Posted: {published_at}")
+    print("="*50)
+
+
+Ans 9
+
+import requests
+from bs4 import BeautifulSoup
+
+
+def scrape_hostels_in_london():
+    url = "https://www.hostelworld.com/s?q=London,%20England&country=England&city=London&type=city&id=3&from=2024-02-18&to=2024-02-19&guests=1&page=1"
+    response = requests.get(url)
+
+    if response.status_code == 200:
+        soup = BeautifulSoup(response.text, "html.parser")
+        hostels = soup.find_all("div", class_="fabresult rounded clearfix")
+
+        for hostel in hostels:
+            name = hostel.find("h2", class_="title title-6").text.strip()
+            distance = hostel.find("span", class_="description").text.strip()
+            ratings = hostel.find("div", class_="score orange").text.strip()
+            total_reviews = hostel.find("div", class_="reviews").text.strip()
+            overall_reviews = hostel.find("div", class_="keyword").text.strip()
+            private_price = hostel.find("div", class_="prices").find("a", class_="price").text.strip()
+            dorm_price = hostel.find("div", class_="prices").find("a", class_="price").find_next_sibling(
+                "a").text.strip()
+            facilities = ", ".join([item.text.strip() for item in hostel.find_all("div", class_="facilities")])
+            description = hostel.find("div", class_="ctas").find("p").text.strip()
+
+            print("Name:", name)
+            print("Distance from City Centre:", distance)
+            print("Ratings:", ratings)
+            print("Total Reviews:", total_reviews)
+            print("Overall Reviews:", overall_reviews)
+            print("Privates from Price:", private_price)
+            print("Dorms from Price:", dorm_price)
+            print("Facilities:", facilities)
+            print("Property Description:", description)
+            print("=" * 50)
+    else:
+        print("Failed to retrieve page.")
+
+
+scrape_hostels_in_london()
+
+            
+
+
+
+
+
+
+
+
